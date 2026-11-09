@@ -81,10 +81,25 @@ def load_config() -> Config:
     return Config(
         vk_token=_require("VK_TOKEN"),
         vk_group_id=group_id,
-        gigachat_credentials=_require("GIGACHAT_CREDENTIALS"),
+        gigachat_credentials=_optional("GIGACHAT_CREDENTIALS"),
         gigachat_scope=_optional("GIGACHAT_SCOPE", "GIGACHAT_API_PERS"),
         gigachat_model=_optional("GIGACHAT_MODEL", "GigaChat-2"),
         gigachat_ca_bundle_file=ca_path,
         log_level=_optional("LOG_LEVEL", "INFO").upper(),
         max_budget_rub=max_budget,
     )
+
+
+def require_gigachat_credentials(config: Config) -> str:
+    """Возвращает ключ GigaChat или понятно объясняет, чего не хватает.
+
+    Ключ нужен только модулю AI. Так этапы без AI (проверка ВК, эхо-бот)
+    могут запускаться, пока `GIGACHAT_CREDENTIALS` ещё не заполнен.
+    """
+
+    if not config.gigachat_credentials:
+        raise ConfigError(
+            "Не задана переменная GIGACHAT_CREDENTIALS. "
+            "Она понадобится для работы AI — заполните её в .env."
+        )
+    return config.gigachat_credentials
