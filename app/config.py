@@ -45,6 +45,8 @@ class Config:
     gigachat_scope: str
     gigachat_model: str
     gigachat_ca_bundle_file: Path
+    gigachat_timeout_seconds: float
+    gigachat_max_retries: int
     log_level: str
     max_budget_rub: int | None
 
@@ -78,6 +80,22 @@ def load_config() -> Config:
         except ValueError as exc:
             raise ConfigError("MAX_BUDGET_RUB должен быть целым числом.") from exc
 
+    timeout_raw = _optional("GIGACHAT_TIMEOUT_SECONDS", "60")
+    try:
+        timeout_seconds = float(timeout_raw)
+    except ValueError as exc:
+        raise ConfigError("GIGACHAT_TIMEOUT_SECONDS должен быть числом.") from exc
+    if timeout_seconds <= 0:
+        raise ConfigError("GIGACHAT_TIMEOUT_SECONDS должен быть больше нуля.")
+
+    retries_raw = _optional("GIGACHAT_MAX_RETRIES", "2")
+    try:
+        max_retries = int(retries_raw)
+    except ValueError as exc:
+        raise ConfigError("GIGACHAT_MAX_RETRIES должен быть целым числом.") from exc
+    if max_retries < 0:
+        raise ConfigError("GIGACHAT_MAX_RETRIES не может быть отрицательным.")
+
     return Config(
         vk_token=_require("VK_TOKEN"),
         vk_group_id=group_id,
@@ -85,6 +103,8 @@ def load_config() -> Config:
         gigachat_scope=_optional("GIGACHAT_SCOPE", "GIGACHAT_API_PERS"),
         gigachat_model=_optional("GIGACHAT_MODEL", "GigaChat-2"),
         gigachat_ca_bundle_file=ca_path,
+        gigachat_timeout_seconds=timeout_seconds,
+        gigachat_max_retries=max_retries,
         log_level=_optional("LOG_LEVEL", "INFO").upper(),
         max_budget_rub=max_budget,
     )
