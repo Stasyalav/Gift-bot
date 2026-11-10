@@ -38,6 +38,13 @@ _THOUSANDS_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Ответ на вопрос «назовите бюджет»: «5000», «до 5 000», «5к», «3 тысячи».
+_BARE_NUMBER_RE = re.compile(
+    rf"^\s*(?:до|около|примерно|где-то|максимум)?\s*"
+    rf"({_NUMBER})\s*({_THOUSANDS})?\s*{_CURRENCY}?\s*$",
+    re.IGNORECASE,
+)
+
 MIN_BUDGET_RUB = 100
 MAX_BUDGET_RUB = 10_000_000
 
@@ -122,3 +129,26 @@ def format_rub(value: int) -> str:
     """Форматирует сумму в рублях: 5000 -> «5 000 ₽»."""
 
     return f"{value:,}".replace(",", " ") + " ₽"
+
+
+def is_bare_budget(text: str) -> bool:
+    """Похоже ли сообщение только на сумму — без описания получателя."""
+
+    return bool(text) and _BARE_NUMBER_RE.fullmatch(text) is not None
+
+
+def extract_budget_reply(text: str) -> int | None:
+    """Бюджет из короткого ответа на вопрос «до какой суммы?».
+
+    Обычное извлечение требует валюты или «к»/«тыс». Но когда мы сами
+    спросили бюджет, человек вправе ответить просто «5000».
+    """
+
+    value = extract_budget(text)
+    if value is not None:
+        return value
+
+    match = _BARE_NUMBER_RE.fullmatch(text or "")
+    if match is None:
+        return None
+    return _valid(_to_int(match.group(1), thousands=bool(match.group(2))))
